@@ -1,0 +1,29 @@
+// Measure checks: values must match the SQL validation queries and the course report
+EVALUATE
+ROW (
+"Total Users", [Total Users], "Net Revenue", [Net Revenue], "Gross Revenue", [Gross Revenue], "Refunds", [Refunds], "Refund Count", [Refund Count],
+"Total Spend", [Total Spend], "Direct Spend", [Direct Spend], "Overhead", [Overhead],
+"Trial Users", [Trial Users], "Paying Users", [Paying Users], "Paid with Trial", [Paid with Trial], "Paid without Trial", [Paid without Trial], "Trial to Paid %", [Trial to Paid %],
+"Renewed Users", [Renewed Users], "Upgraded Users", [Upgraded Users],
+"LTV per User", [LTV per User], "CAC Direct", [CAC Direct], "CAC Loaded", [CAC Loaded], "ROAS", [ROAS], "LTV to CAC Loaded", [LTV to CAC Loaded]
+)
+
+EVALUATE
+SUMMARIZECOLUMNS ( dim_country[country], "Users", [Total Users], "LTV", [LTV per User], "CAC Direct", [CAC Direct], "CAC Loaded", [CAC Loaded], "LTV/CAC Direct", [LTV to CAC Direct], "LTV/CAC Loaded", [LTV to CAC Loaded], "Trial to Paid %", [Trial to Paid %] )
+ORDER BY [LTV/CAC Direct] DESC
+
+EVALUATE
+SUMMARIZECOLUMNS ( dim_funnel_stage[StageOrder], dim_funnel_stage[Stage], "Users", [Funnel Users], "% of Signup", [Funnel % of Signup], "Step %", [Funnel Step Conversion %] )
+ORDER BY dim_funnel_stage[StageOrder]
+
+EVALUATE
+SUMMARIZECOLUMNS ( fact_transactions[MonthOffset], "Retention Curve %", [Retention Curve %] )
+ORDER BY fact_transactions[MonthOffset]
+
+EVALUATE
+SUMMARIZECOLUMNS ( dim_channel[channel], "Users", [Total Users], "Trial to Paid %", [Trial to Paid %], "Renewal Rate %", [Renewal Rate %], "LTV", [LTV per User], "CAC", [CAC Direct], "LTV/CAC", [LTV to CAC Direct] )
+ORDER BY [LTV] DESC
+
+EVALUATE
+SUMMARIZECOLUMNS ( dim_date[Month], "Net Revenue", [Net Revenue], "Active Payers", [Active Payers], "Renewal Share %", [Renewal Share %], "New Users", [New Users] )
+ORDER BY dim_date[Month]

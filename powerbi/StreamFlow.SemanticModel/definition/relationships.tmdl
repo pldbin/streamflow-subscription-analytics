@@ -1,0 +1,37 @@
+relationship 44c73805-acd7-4a41-81bf-dcaddafe1ac2
+	fromColumn: fact_transactions.user_id
+	toColumn: dim_users.user_id
+
+relationship c00f4484-da73-4f8c-a71e-cb38108b9d86
+	fromColumn: fact_transactions.plan_id
+	toColumn: dim_plans.plan_id
+
+relationship 62a93a94-c975-4506-88a8-be287e8ac0c6
+	fromColumn: fact_transactions.txn_date
+	toColumn: dim_date.Date
+
+relationship 092a54f3-684a-47a1-9b76-c31b3d95e5be
+	fromColumn: fact_marketing_spend.country
+	toColumn: dim_country.country
+
+relationship 2bba9df4-c4b2-432e-89f9-47941ce59a86
+	fromColumn: fact_marketing_spend.channel
+	toColumn: dim_channel.channel
+
+relationship c7433fc9-f40b-4780-a1bb-9f6961228f89
+	fromColumn: fact_marketing_spend.month_date
+	toColumn: dim_date.Date
+
+relationship 95d6b0f2-ea98-46ab-9b10-e63a5cab9ccc
+	fromColumn: dim_users.country
+	toColumn: dim_country.country
+
+relationship 6b783d5e-0124-4430-b1c3-0f33fcacfe65
+	fromColumn: dim_users.channel
+	toColumn: dim_channel.channel
+
+relationship 988eb48b-c9a9-406b-adc7-b36b270e4ba9
+	isActive: false
+	fromColumn: dim_users.signup_date
+	toColumn: dim_date.Date
+

@@ -1,0 +1,55 @@
+table fact_marketing_spend
+	lineageTag: 3bb041dd-1a7b-4192-b9d2-7df0ef8f5176
+
+	column spend_id
+		dataType: int64
+		formatString: 0
+		lineageTag: ba873316-9e82-4dc1-af61-25caa45e249a
+		summarizeBy: none
+		sourceColumn: spend_id
+
+	column month_date
+		dataType: dateTime
+		formatString: yyyy-mm
+		lineageTag: f1c93b6d-1c9a-4d0c-a242-6e030b692345
+		summarizeBy: none
+		sourceColumn: month_date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column country
+		dataType: string
+		lineageTag: 812c93ba-59ed-47dc-8fb2-228b234d908a
+		summarizeBy: none
+		sourceColumn: country
+
+	column channel
+		dataType: string
+		lineageTag: d08a864c-3b14-4e4a-bb8b-4dcd80f6f293
+		summarizeBy: none
+		sourceColumn: channel
+
+	column spend_usd
+		dataType: int64
+		formatString: \$#,0
+		lineageTag: a3c0a749-f9c6-4d9c-9f32-5d69816eec71
+		summarizeBy: sum
+		sourceColumn: spend_usd
+
+	column is_overhead
+		dataType: int64
+		formatString: 0
+		lineageTag: 3322bf6f-bb0e-4b5b-bbba-91b078ba737c
+		summarizeBy: none
+		sourceColumn: is_overhead
+
+	partition fact_marketing_spend = m
+		mode: import
+		source =
+				let
+					Source = Csv.Document(File.Contents(DataFolder & "marketing_spend.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+					Headers = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+					Typed = Table.TransformColumnTypes(Headers, {{"spend_id", Int64.Type}, {"month_date", type date}, {"country", type text}, {"channel", type text}, {"spend_usd", Int64.Type}, {"is_overhead", Int64.Type}}, "en-US")
+				in
+					Typed
+

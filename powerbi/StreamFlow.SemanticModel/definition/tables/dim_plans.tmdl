@@ -1,0 +1,39 @@
+table dim_plans
+	lineageTag: 4e2da7f5-2b4d-456e-918c-5c4a845fd92f
+
+	column plan_id
+		dataType: string
+		lineageTag: cfd21c9d-1734-40b8-8b6f-63a916a2081e
+		summarizeBy: none
+		sourceColumn: plan_id
+
+	column plan_name
+		dataType: string
+		lineageTag: 489eb507-d3e0-4b0e-bb45-93104b21fcf1
+		summarizeBy: none
+		sourceColumn: plan_name
+
+	column duration_days
+		dataType: int64
+		formatString: 0
+		lineageTag: 5ebd7389-7400-48df-b1fa-b7f049e03117
+		summarizeBy: none
+		sourceColumn: duration_days
+
+	column list_price_usd
+		dataType: decimal
+		formatString: \$#,0.00
+		lineageTag: f37c59e3-2390-45ec-bdb6-5b3cb779a59c
+		summarizeBy: none
+		sourceColumn: list_price_usd
+
+	partition dim_plans = m
+		mode: import
+		source =
+				let
+					Source = Csv.Document(File.Contents(DataFolder & "subscription_plans.csv"), [Delimiter=",", Columns=4, Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+					Headers = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+					Typed = Table.TransformColumnTypes(Headers, {{"plan_id", type text}, {"plan_name", type text}, {"duration_days", Int64.Type}, {"list_price_usd", Currency.Type}}, "en-US")
+				in
+					Typed
+

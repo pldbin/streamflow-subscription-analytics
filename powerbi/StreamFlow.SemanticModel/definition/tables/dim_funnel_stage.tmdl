@@ -1,0 +1,24 @@
+table dim_funnel_stage
+	lineageTag: e437987f-f484-4594-b28b-ef6c88e5ea57
+
+	column StageOrder
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: fb77eb16-8fd9-4716-9aba-360cff7e6b3a
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [StageOrder]
+
+	column Stage
+		dataType: string
+		lineageTag: 8e9b519f-4789-411d-b2be-8fdbb6b51bc3
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Stage]
+		sortByColumn: StageOrder
+
+	partition dim_funnel_stage = calculated
+		mode: import
+		source = DATATABLE ( "StageOrder", INTEGER, "Stage", STRING, { { 1, "Signup" }, { 2, "Trial" }, { 3, "First Payment" }, { 4, "Renewal" }, { 5, "Upgrade" } } )
+

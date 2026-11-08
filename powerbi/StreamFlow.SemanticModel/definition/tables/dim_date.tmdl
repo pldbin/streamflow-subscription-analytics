@@ -1,0 +1,71 @@
+table dim_date
+	lineageTag: fa471acf-4456-4824-8183-d81f4f81450b
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: Short Date
+		lineageTag: 5cee2ce6-f4a8-48f3-9d23-b447d829fc14
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: 62326094-4290-4d19-b60e-20e62b43a352
+		summarizeBy: none
+		sourceColumn: Year
+
+	column MonthStart
+		dataType: dateTime
+		formatString: yyyy-mm
+		lineageTag: 615a6705-9f35-492a-a7e9-e5df16c036f1
+		summarizeBy: none
+		sourceColumn: MonthStart
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Month
+		dataType: string
+		lineageTag: 234ff1ce-98e4-4810-ae62-64a54c0aae49
+		summarizeBy: none
+		sourceColumn: Month
+
+	column MonthNo
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 090bb302-ad25-42b4-a9ac-4371b35451c2
+		summarizeBy: none
+		sourceColumn: MonthNo
+
+	column MonthLabel
+		dataType: string
+		lineageTag: 803359a0-1eff-415e-9a79-04b834de2e97
+		summarizeBy: none
+		sourceColumn: MonthLabel
+		sortByColumn: MonthNo
+
+	partition dim_date = m
+		mode: import
+		source =
+				let
+					Users = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "users.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]), [PromoteAllScalars=true]),
+					Transactions = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "transactions.csv"), [Delimiter=",", Columns=8, Encoding=65001, QuoteStyle=QuoteStyle.Csv]), [PromoteAllScalars=true]),
+					MinDate = List.Min(Table.TransformColumnTypes(Users, {{"signup_date", type date}}, "en-US")[signup_date]),
+					MaxDate = List.Max(Table.TransformColumnTypes(Transactions, {{"txn_date", type date}}, "en-US")[txn_date]),
+					StartDate = Date.StartOfMonth(MinDate),
+					EndDate = Date.EndOfMonth(MaxDate),
+					Dates = List.Dates(StartDate, Duration.Days(EndDate - StartDate) + 1, #duration(1, 0, 0, 0)),
+					Calendar = Table.FromColumns({Dates}, type table [Date = date]),
+					AddYear = Table.AddColumn(Calendar, "Year", each Date.Year([Date]), Int64.Type),
+					AddMonthStart = Table.AddColumn(AddYear, "MonthStart", each Date.StartOfMonth([Date]), type date),
+					AddMonth = Table.AddColumn(AddMonthStart, "Month", each Date.ToText([Date], [Format="yyyy-MM", Culture="en-US"]), type text),
+					AddMonthNo = Table.AddColumn(AddMonth, "MonthNo", each Date.Year([Date]) * 100 + Date.Month([Date]), Int64.Type),
+					AddMonthLabel = Table.AddColumn(AddMonthNo, "MonthLabel", each Date.ToText([Date], [Format="MMM yyyy", Culture="en-US"]), type text)
+				in
+					AddMonthLabel
+

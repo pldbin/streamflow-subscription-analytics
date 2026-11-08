@@ -1,0 +1,18 @@
+// Model checks after refresh: row counts and control totals (must match sql/profile)
+EVALUATE
+ROW (
+    "users", COUNTROWS ( dim_users ),
+    "transactions", COUNTROWS ( fact_transactions ),
+    "spend_rows", COUNTROWS ( fact_marketing_spend ),
+    "plans", COUNTROWS ( dim_plans ),
+    "dates", COUNTROWS ( dim_date ),
+    "countries", COUNTROWS ( dim_country ),
+    "channels", COUNTROWS ( dim_channel ),
+    "net_revenue", SUM ( fact_transactions[amount_usd] ),
+    "spend_usd", SUM ( fact_marketing_spend[spend_usd] ),
+    "trial_users", SUM ( dim_users[HasTrial] ),
+    "paid_users", SUM ( dim_users[HasPaid] ),
+    "no_campaign", CALCULATE ( COUNTROWS ( fact_transactions ), fact_transactions[campaign] = "None" ),
+    "min_offset", MIN ( fact_transactions[MonthOffset] ),
+    "max_offset", MAX ( fact_transactions[MonthOffset] )
+)

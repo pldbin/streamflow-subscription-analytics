@@ -1,0 +1,5 @@
+expression DataFolder = "C:\New folder\streamflow-subscription-analytics\data\" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 1e9f8c75-ead8-4127-840f-15266c25fb4c
+
+	annotation PBI_ResultType = Text
+

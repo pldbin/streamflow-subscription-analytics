@@ -1,0 +1,20 @@
+table dim_country
+	lineageTag: c2951eb2-822d-4cb3-a33e-09414afcaf84
+
+	column country
+		dataType: string
+		lineageTag: 73f9dd7b-7884-4d47-aa6e-684e1c6bc358
+		summarizeBy: none
+		sourceColumn: country
+
+	partition dim_country = m
+		mode: import
+		source =
+				let
+					Users = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "users.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]), [PromoteAllScalars=true]),
+					Spend = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "marketing_spend.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]), [PromoteAllScalars=true]),
+					Countries = List.Sort(List.Distinct(List.Combine({Users[country], List.Select(Spend[country], each _ <> "Global")}))),
+					Result = Table.FromColumns({Countries}, type table [country = text])
+				in
+					Result
+

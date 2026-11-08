@@ -1,0 +1,76 @@
+table dim_users
+	lineageTag: 8412aa7c-ebef-4ce7-b5ad-fd2a6ee8638e
+
+	column user_id
+		dataType: string
+		lineageTag: a4d17547-e26a-4ef4-a28e-1cbf0f1145d8
+		summarizeBy: none
+		sourceColumn: user_id
+
+	column signup_date
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: f0d29a1b-36cf-4328-8353-14eead1d3cdf
+		summarizeBy: none
+		sourceColumn: signup_date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column country
+		dataType: string
+		lineageTag: 2e32c1a1-fb55-42ef-a11d-cb2069f453de
+		summarizeBy: none
+		sourceColumn: country
+
+	column platform
+		dataType: string
+		lineageTag: 0696e00d-8819-414c-87fb-7667b03f328d
+		summarizeBy: none
+		sourceColumn: platform
+
+	column channel
+		dataType: string
+		lineageTag: 4eb6253a-34a7-4d89-914e-dff3fa183702
+		summarizeBy: none
+		sourceColumn: channel
+
+	column age_group
+		dataType: string
+		lineageTag: a7664006-2145-4413-85c1-b0e249b5ef88
+		summarizeBy: none
+		sourceColumn: age_group
+
+	column CohortMonth = DATE ( YEAR ( dim_users[signup_date] ), MONTH ( dim_users[signup_date] ), 1 )
+		dataType: dateTime
+		formatString: yyyy-mm
+		lineageTag: d906eaf9-6746-4872-a417-8915a7140b60
+		summarizeBy: none
+
+	column HasTrial = IF ( CALCULATE ( COUNTROWS ( fact_transactions ), fact_transactions[transaction_type] = "trial_start" ) > 0, 1, 0 )
+		dataType: int64
+		formatString: 0
+		lineageTag: 5714b6fb-1278-4628-8df6-bb91db705cd6
+		summarizeBy: sum
+
+	column HasPaid = IF ( CALCULATE ( COUNTROWS ( fact_transactions ), fact_transactions[transaction_type] = "first_payment" ) > 0, 1, 0 )
+		dataType: int64
+		formatString: 0
+		lineageTag: 2180878b-4fec-451a-9f3c-d11fddb85e16
+		summarizeBy: sum
+
+	/// Groups cohorts for the Black Friday deep dive: the November 2024 signup cohort vs all other cohorts.
+	column 'Cohort Group' = IF ( dim_users[CohortMonth] = DATE ( 2024, 11, 1 ), "Nov 2024 (Black Friday)", "Other cohorts" )
+		dataType: string
+		lineageTag: 133a5727-a100-427f-b263-3ca4420c6d2b
+		summarizeBy: none
+
+	partition dim_users = m
+		mode: import
+		source =
+				let
+					Source = Csv.Document(File.Contents(DataFolder & "users.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+					Headers = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+					Typed = Table.TransformColumnTypes(Headers, {{"user_id", type text}, {"signup_date", type date}, {"country", type text}, {"platform", type text}, {"channel", type text}, {"age_group", type text}}, "en-US")
+				in
+					Typed
+

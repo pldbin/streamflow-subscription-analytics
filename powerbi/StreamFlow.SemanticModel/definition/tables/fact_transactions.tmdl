@@ -1,0 +1,73 @@
+table fact_transactions
+	lineageTag: f359d054-8319-423d-ac3f-9c477c4fdd54
+
+	column transaction_id
+		dataType: string
+		lineageTag: e5dd0623-944c-4c4c-b9a5-2695ebd8a649
+		summarizeBy: none
+		sourceColumn: transaction_id
+
+	column user_id
+		dataType: string
+		lineageTag: bfe47074-ef2d-483f-b02c-f9fe4c8dd5fc
+		summarizeBy: none
+		sourceColumn: user_id
+
+	column plan_id
+		dataType: string
+		lineageTag: 87f2c794-77d5-467d-9d95-f5d28256ce27
+		summarizeBy: none
+		sourceColumn: plan_id
+
+	column txn_datetime
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: c2256f91-44a8-4a6c-9135-5961f75bbe65
+		summarizeBy: none
+		sourceColumn: txn_datetime
+
+	column txn_date
+		dataType: dateTime
+		formatString: Short Date
+		lineageTag: 9bfb8420-720d-443c-b62e-fa38bc1dad41
+		summarizeBy: none
+		sourceColumn: txn_date
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column transaction_type
+		dataType: string
+		lineageTag: 201904a9-63e2-4126-a88f-28fb281caf58
+		summarizeBy: none
+		sourceColumn: transaction_type
+
+	column amount_usd
+		dataType: decimal
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		lineageTag: ba43a204-387a-4317-8372-a323ee368228
+		summarizeBy: sum
+		sourceColumn: amount_usd
+
+	column campaign
+		dataType: string
+		lineageTag: 57cf9705-7074-4c9d-ab51-6802f9b7c806
+		summarizeBy: none
+		sourceColumn: campaign
+
+	column MonthOffset = DATEDIFF ( RELATED ( dim_users[CohortMonth] ), fact_transactions[txn_date], MONTH )
+		dataType: int64
+		formatString: 0
+		lineageTag: 0fafa5f2-8037-42a2-a84d-30fefc533efb
+		summarizeBy: none
+
+	partition fact_transactions = m
+		mode: import
+		source =
+				let
+					Source = Csv.Document(File.Contents(DataFolder & "transactions.csv"), [Delimiter=",", Columns=8, Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+					Headers = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+					Typed = Table.TransformColumnTypes(Headers, {{"transaction_id", type text}, {"user_id", type text}, {"plan_id", type text}, {"txn_datetime", type datetime}, {"txn_date", type date}, {"transaction_type", type text}, {"amount_usd", Currency.Type}, {"campaign", type text}}, "en-US"),
+					CampaignNone = Table.ReplaceValue(Typed, "", "None", Replacer.ReplaceValue, {"campaign"})
+				in
+					CampaignNone
+

@@ -1,0 +1,29 @@
+table dim_channel
+	lineageTag: 3b1188fb-befa-4423-8e62-9c3441424783
+
+	column channel
+		dataType: string
+		lineageTag: c55af3a6-4d7a-4df9-84d8-f8686584d1ad
+		summarizeBy: none
+		sourceColumn: channel
+
+	column channel_type
+		dataType: string
+		lineageTag: ee8e9f8f-dab9-4968-9bbb-822b75ba6779
+		summarizeBy: none
+		sourceColumn: channel_type
+
+	partition dim_channel = m
+		mode: import
+		source =
+				let
+					Users = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "users.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]), [PromoteAllScalars=true]),
+					Spend = Table.PromoteHeaders(Csv.Document(File.Contents(DataFolder & "marketing_spend.csv"), [Delimiter=",", Columns=6, Encoding=65001, QuoteStyle=QuoteStyle.Csv]), [PromoteAllScalars=true]),
+					UserChannels = List.Distinct(Users[channel]),
+					PaidChannels = List.Distinct(Table.SelectRows(Spend, each [country] <> "Global")[channel]),
+					AllChannels = List.Sort(List.Distinct(List.Combine({UserChannels, Spend[channel]}))),
+					Channels = Table.FromColumns({AllChannels}, type table [channel = text]),
+					WithType = Table.AddColumn(Channels, "channel_type", each if List.Contains(PaidChannels, [channel]) then "Paid" else if List.Contains(UserChannels, [channel]) then "Organic" else "Overhead", type text)
+				in
+					WithType
+

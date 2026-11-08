@@ -1,0 +1,466 @@
+table _Measures
+	lineageTag: 3dba468b-e2cc-4d8a-9285-8a6fa3398f03
+
+	/// Number of users in the current filter context (by country, channel, platform, age group).
+	measure 'Total Users' = COUNTROWS ( dim_users )
+		formatString: #,0
+		displayFolder: 1. Base
+		lineageTag: add5af40-d5d7-4b29-921e-12d9e10a0ffe
+
+	/// Users by signup date: activates the inactive dim_users[signup_date] -> dim_date relationship, so the date axis means "signed up in this period".
+	measure 'New Users' = CALCULATE ( [Total Users], USERELATIONSHIP ( dim_users[signup_date], dim_date[Date] ) )
+		formatString: #,0
+		displayFolder: 1. Base
+		lineageTag: 2a593008-3aea-4def-97d1-7d0f6a013bd9
+
+	/// Share of users within the current visual (used for the distributions by country, platform, channel, age).
+	measure 'Share of Users %' = DIVIDE ( [Total Users], CALCULATE ( [Total Users], ALLSELECTED () ) )
+		formatString: 0.0%
+		displayFolder: 1. Base
+		lineageTag: b72c4708-8d12-4f9a-865c-655671857d20
+
+	/// All transaction amounts; refunds are stored as negative amounts, so this is revenue after refunds.
+	measure 'Net Revenue' = SUM ( fact_transactions[amount_usd] )
+		formatString: \$#,0
+		displayFolder: 1. Base
+		lineageTag: 06fb7678-f69b-4d3b-a8b6-318d49f63a14
+
+	/// Revenue before refunds: first payments, renewals and upgrades.
+	measure 'Gross Revenue' = CALCULATE ( [Net Revenue], fact_transactions[amount_usd] > 0 )
+		formatString: \$#,0
+		displayFolder: 1. Base
+		lineageTag: 1665a57e-601a-4bdf-96d5-a1793ff9f4e5
+
+	/// Refunded amount as a positive number.
+	measure Refunds = - CALCULATE ( [Net Revenue], fact_transactions[transaction_type] = "refund" )
+		formatString: \$#,0.00
+		displayFolder: 1. Base
+		lineageTag: c0f92e17-6591-40d2-84b7-388b7644b7d5
+
+	/// Number of refund transactions.
+	measure 'Refund Count' = CALCULATE ( COUNTROWS ( fact_transactions ), fact_transactions[transaction_type] = "refund" )
+		formatString: #,0
+		displayFolder: 1. Base
+		lineageTag: fad99ee6-6e1f-43f0-8fe3-d4d3d3db026e
+
+	/// All marketing spend, including the shared Global overhead.
+	measure 'Total Spend' = SUM ( fact_marketing_spend[spend_usd] )
+		formatString: \$#,0
+		displayFolder: 1. Base
+		lineageTag: 0c60fa3e-794c-4c7c-8017-9afc4c5c5a62
+
+	/// Spend tied to a country and a channel (excludes Global overhead).
+	measure 'Direct Spend' = CALCULATE ( [Total Spend], fact_marketing_spend[is_overhead] = 0 )
+		formatString: \$#,0
+		displayFolder: 1. Base
+		lineageTag: 8804448a-2eb7-4cc4-b633-ec162693e290
+
+	/// Shared Global spend (SMM + Content). Country and channel filters are removed because these costs belong to no country or channel.
+	measure Overhead =
+			CALCULATE (
+			    [Total Spend],
+			    fact_marketing_spend[is_overhead] = 1,
+			    REMOVEFILTERS ( dim_country ),
+			    REMOVEFILTERS ( dim_channel )
+			)
+		formatString: \$#,0
+		displayFolder: 1. Base
+		lineageTag: 3c909142-7bce-4071-a042-6950a9bb5834
+
+	/// Users who started a trial.
+	measure 'Trial Users' = CALCULATE ( [Total Users], dim_users[HasTrial] = 1 )
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: 198f83f2-1f50-4297-a826-88595ae21033
+
+	/// Users with a first payment (with or without a trial).
+	measure 'Paying Users' = CALCULATE ( [Total Users], dim_users[HasPaid] = 1 )
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: c6cdc4d7-5b7b-40cb-8e01-c271f946396f
+
+	/// Users with at least one renewal.
+	measure 'Renewed Users' = CALCULATE ( DISTINCTCOUNT ( fact_transactions[user_id] ), fact_transactions[transaction_type] = "renewal" )
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: 04d1a405-8e9d-435c-b93c-9898b525451d
+
+	/// Users with at least one upgrade.
+	measure 'Upgraded Users' = CALCULATE ( DISTINCTCOUNT ( fact_transactions[user_id] ), fact_transactions[transaction_type] = "upgrade" )
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: 7a4fb6dc-6562-4d0b-abc4-1b161016bb97
+
+	/// Users who started a trial and then paid.
+	measure 'Paid with Trial' = CALCULATE ( [Total Users], dim_users[HasTrial] = 1, dim_users[HasPaid] = 1 )
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: 519af61e-d863-4ddd-8ed3-c7d455b70b79
+
+	/// Users who paid directly, without a trial.
+	measure 'Paid without Trial' = CALCULATE ( [Total Users], dim_users[HasTrial] = 0, dim_users[HasPaid] = 1 )
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: 954e5ef2-2f66-48e5-aca7-cbdfad367fee
+
+	/// Share of trial users who paid. Direct payers are excluded, otherwise the conversion would be overstated.
+	measure 'Trial to Paid %' = DIVIDE ( [Paid with Trial], [Trial Users] )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: 3ca07ae0-5af0-43ef-8627-ea50622b7e93
+
+	/// Share of signups who started a trial.
+	measure 'Signup to Trial %' = DIVIDE ( [Trial Users], [Total Users] )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: b794b6a1-d502-44a4-ac16-1ccb7747ee77
+
+	/// Share of signups who paid at least once.
+	measure 'Signup to Paid %' = DIVIDE ( [Paying Users], [Total Users] )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: 43c71c45-8136-48d5-bdda-c55f12cd5199
+
+	/// Share of paying users who skipped the trial.
+	measure 'Direct Pay Share %' = DIVIDE ( [Paid without Trial], [Paying Users] )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: 9e5a3ae3-656e-4b34-8731-19a085f771c0
+
+	/// Unique users at each funnel stage; dim_funnel_stage provides the stage axis.
+	measure 'Funnel Users' =
+			SWITCH (
+			    SELECTEDVALUE ( dim_funnel_stage[Stage] ),
+			    "Signup", [Total Users],
+			    "Trial", [Trial Users],
+			    "First Payment", [Paying Users],
+			    "Renewal", [Renewed Users],
+			    "Upgrade", [Upgraded Users]
+			)
+		formatString: #,0
+		displayFolder: 2. Funnel
+		lineageTag: 147531cb-165a-4fd5-95df-ff81fbb0f1f9
+
+	/// Funnel stage as a share of all signups ([Total Users] is not affected by the disconnected stage table).
+	measure 'Funnel % of Signup' = DIVIDE ( [Funnel Users], [Total Users] )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: 8c9a1ad1-009f-4a32-b071-b7f924c4e5c9
+
+	/// Conversion from the previous funnel stage (blank for Signup). REMOVEFILTERS is needed because visuals also filter the sort-by column StageOrder.
+	measure 'Funnel Step Conversion %' =
+			VAR CurrentStep = SELECTEDVALUE ( dim_funnel_stage[StageOrder] )
+			VAR PreviousUsers =
+			    CALCULATE ( [Funnel Users], REMOVEFILTERS ( dim_funnel_stage ), dim_funnel_stage[StageOrder] = CurrentStep - 1 )
+			RETURN
+			    DIVIDE ( [Funnel Users], PreviousUsers )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: 9b142ae5-5531-4f8c-a81b-c911c26dbdc2
+
+	/// Revenue from first payments.
+	measure 'First Payment Revenue' = CALCULATE ( [Net Revenue], fact_transactions[transaction_type] = "first_payment" )
+		formatString: \$#,0
+		displayFolder: 3. Revenue
+		lineageTag: 4987ab9f-ebe3-4c19-b937-b25407b486f5
+
+	/// Revenue from renewals.
+	measure 'Renewal Revenue' = CALCULATE ( [Net Revenue], fact_transactions[transaction_type] = "renewal" )
+		formatString: \$#,0
+		displayFolder: 3. Revenue
+		lineageTag: e74104d5-f907-4d5c-82f4-1799cd3cc42c
+
+	/// Revenue from upgrades.
+	measure 'Upgrade Revenue' = CALCULATE ( [Net Revenue], fact_transactions[transaction_type] = "upgrade" )
+		formatString: \$#,0
+		displayFolder: 3. Revenue
+		lineageTag: b9cf9daa-6fd0-443f-9fb1-369b7c5fd879
+
+	/// Share of net revenue that comes from renewals.
+	measure 'Renewal Share %' = DIVIDE ( [Renewal Revenue], [Net Revenue] )
+		formatString: 0.0%
+		displayFolder: 3. Revenue
+		lineageTag: fcb2ca59-77f3-43c4-8f8a-970a8aded9e7
+
+	/// Share of gross revenue by subscription plan.
+	measure 'Plan Revenue Share %' = DIVIDE ( [Gross Revenue], CALCULATE ( [Gross Revenue], ALLSELECTED ( dim_plans ) ) )
+		formatString: 0.0%
+		displayFolder: 3. Revenue
+		lineageTag: ca45c72d-59e2-4aeb-9d2a-32c8ae68650e
+
+	/// Users with a paying transaction (first payment, renewal or upgrade) in the period. By month: paying users that month.
+	measure 'Active Payers' =
+			CALCULATE (
+			    DISTINCTCOUNT ( fact_transactions[user_id] ),
+			    fact_transactions[transaction_type] IN { "first_payment", "renewal", "upgrade" }
+			)
+		formatString: #,0
+		displayFolder: 3. Revenue
+		lineageTag: fcb0bdf7-fd2b-4183-8b51-f4696b3767ac
+
+	/// Users in the cohort (signup month). Filters on fact_transactions[MonthOffset] do not reach dim_users, so the size stays constant across the matrix row.
+	measure 'Cohort Size' = COUNTROWS ( dim_users )
+		formatString: #,0
+		displayFolder: 4. Retention
+		lineageTag: c73e7397-ba56-4195-8c27-51ebf96698d4
+
+	/// Share of the cohort that paid N months after signup (rows: dim_users[CohortMonth], columns: fact_transactions[MonthOffset]).
+	measure 'Retention %' = DIVIDE ( [Active Payers], [Cohort Size] )
+		formatString: 0.0%
+		displayFolder: 4. Retention
+		lineageTag: a5b558a8-097c-45e0-9564-84a0babc0e6c
+
+	/// Weighted retention curve: payers N months after signup divided by the users of all cohorts that are old enough to have reached month N.
+	measure 'Retention Curve %' =
+			VAR MonthsSinceSignup = SELECTEDVALUE ( fact_transactions[MonthOffset] )
+			VAR LastMonth = CALCULATE ( MAX ( dim_date[MonthStart] ), REMOVEFILTERS ( dim_date ) )
+			VAR EligibleUsers =
+			    CALCULATE (
+			        [Cohort Size],
+			        dim_users[CohortMonth] <= EDATE ( LastMonth, - MonthsSinceSignup )
+			    )
+			RETURN
+			    DIVIDE ( [Active Payers], EligibleUsers )
+		formatString: 0.0%
+		displayFolder: 4. Retention
+		lineageTag: 7cfa806e-6f96-477d-85ea-6cf1366b5b6c
+
+	/// Share of paying users who renewed at least once (retention quality of a channel or country).
+	measure 'Renewal Rate %' = DIVIDE ( [Renewed Users], [Paying Users] )
+		formatString: 0.0%
+		displayFolder: 4. Retention
+		lineageTag: 8bbd3196-6ca0-4343-b722-5fb7b89ee9b9
+
+	/// LTV = net revenue per user over the whole period (all users, not only payers).
+	measure 'LTV per User' = DIVIDE ( [Net Revenue], [Total Users] )
+		formatString: \$#,0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: cbadd873-888e-4cb6-bcb1-f9e0267eae97
+
+	/// Average net revenue per paying user.
+	measure ARPPU = DIVIDE ( [Net Revenue], [Paying Users] )
+		formatString: \$#,0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: f4a5e713-4bcb-4400-9a6c-872dbd778f3a
+
+	/// Acquisition cost per user from country and channel spend only (no overhead).
+	measure 'CAC Direct' = DIVIDE ( [Direct Spend], [Total Users] )
+		formatString: \$#,0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: 7e9bbe6a-6b06-4304-9fb7-7a3d2bdfdcdc
+
+	/// Share of all users in the selected country; used to allocate the Global overhead.
+	measure 'User Share' = DIVIDE ( [Total Users], CALCULATE ( [Total Users], REMOVEFILTERS ( dim_country ) ) )
+		formatString: 0.0%
+		displayFolder: 5. Unit Economics
+		lineageTag: 136d5f1c-e2ce-47c3-b0c0-2f9e3d72b229
+
+	/// Fully loaded CAC: direct spend plus the Global overhead allocated by share of users.
+	measure 'CAC Loaded' = DIVIDE ( [Direct Spend] + [Overhead] * [User Share], [Total Users] )
+		formatString: \$#,0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: 6e229a16-6652-4787-8429-e8ca61f8a888
+
+	/// LTV / CAC on direct spend. Above 1 means a user brings more revenue than it cost to acquire.
+	measure 'LTV to CAC Direct' = DIVIDE ( [LTV per User], [CAC Direct] )
+		formatString: 0.0\x
+		displayFolder: 5. Unit Economics
+		lineageTag: 590abb33-e7b4-40f8-8485-a34497175cf6
+
+	/// LTV / CAC including the allocated overhead. For all countries together it equals ROAS.
+	measure 'LTV to CAC Loaded' = DIVIDE ( [LTV per User], [CAC Loaded] )
+		formatString: 0.00\x
+		displayFolder: 5. Unit Economics
+		lineageTag: 8c4f3f38-713b-49dc-b592-46d781f95b6e
+
+	/// Return on ad spend: net revenue / all marketing spend.
+	measure ROAS = DIVIDE ( [Net Revenue], [Total Spend] )
+		formatString: 0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: 42efc079-09d8-452b-b634-d4133b35432c
+
+	/// Direct spend per paying user ("a cheap click is not a cheap paying user").
+	measure 'CAC per Payer' = DIVIDE ( [Direct Spend], [Paying Users] )
+		formatString: \$#,0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: 79a50aef-9671-4900-9ea4-ad60ad976a06
+
+	/// Margin per user after direct acquisition cost.
+	measure 'LTV minus CAC' = [LTV per User] - [CAC Direct]
+		formatString: \$#,0.00
+		displayFolder: 5. Unit Economics
+		lineageTag: 2278e0b7-dd71-4284-895a-47c68eb7d453
+
+	/// Trial to Paid % for all countries together; drawn as the dashed reference line on the country chart.
+	measure 'Trial to Paid % (All Countries)' = CALCULATE ( [Trial to Paid %], REMOVEFILTERS ( dim_country ) )
+		formatString: 0.0%
+		displayFolder: 2. Funnel
+		lineageTag: ad1e5c85-1d1d-4999-b1be-dc0526893e7f
+
+	/// Font colour for the retention matrix: white text on dark cells, dark text on light cells.
+	measure 'Retention Font Color' = IF ( [Retention %] >= 0.43, "#FFFFFF", "#0B0B0B" )
+		displayFolder: 9. Formatting
+		lineageTag: 857233b2-810c-4c59-b4fc-40bf21f838ea
+
+	/// Share of first payments made on the Annual plan (Black Friday pushed discounted annual plans).
+	measure 'Annual Share of First Payments %' =
+			DIVIDE (
+			    CALCULATE ( COUNTROWS ( fact_transactions ), fact_transactions[transaction_type] = "first_payment", dim_plans[plan_name] = "Annual" ),
+			    CALCULATE ( COUNTROWS ( fact_transactions ), fact_transactions[transaction_type] = "first_payment" )
+			)
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: 1adc8cc7-34bd-43b2-9d20-2edf8d7cd03e
+
+	/// Average price paid for a first Annual payment (list price $59.99).
+	measure 'Avg Annual First Payment' = CALCULATE ( AVERAGE ( fact_transactions[amount_usd] ), fact_transactions[transaction_type] = "first_payment", dim_plans[plan_name] = "Annual" )
+		formatString: \$#,0.00
+		displayFolder: 6. Advanced
+		lineageTag: 014d75aa-3d57-4f5e-9776-7a05769532de
+
+	/// Average price actually paid for the Monthly plan (list price $14.99); shows regional pricing.
+	measure 'Avg Monthly Price Paid' = CALCULATE ( AVERAGE ( fact_transactions[amount_usd] ), fact_transactions[transaction_type] IN { "first_payment", "renewal" }, dim_plans[plan_name] = "Monthly" )
+		formatString: \$#,0.00
+		displayFolder: 6. Advanced
+		lineageTag: bc2f6d6a-c7b4-4554-8651-128e34786a8e
+
+	/// Share of the cohort paying in the month after signup.
+	measure 'Retention M1 %' = CALCULATE ( [Retention %], fact_transactions[MonthOffset] = 1 )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: f92c3d43-7d47-4e83-9d96-442c0bd44826
+
+	/// Share of the cohort paying six months after signup.
+	measure 'Retention M6 %' = CALCULATE ( [Retention %], fact_transactions[MonthOffset] = 6 )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: 3d8a64c1-f877-45a5-8443-df5ab5132f20
+
+	/// Direct spend in the month divided by users who signed up that month (use with dim_date and dim_channel).
+	measure 'CAC per New User' = DIVIDE ( [Direct Spend], [New Users] )
+		formatString: \$#,0.00
+		displayFolder: 6. Advanced
+		lineageTag: 6bb3ada7-bb80-4409-b04c-6f8948c9a3a0
+
+	/// Share of direct spend by channel (channel mix).
+	measure 'Spend Share %' = DIVIDE ( [Direct Spend], CALCULATE ( [Direct Spend], ALLSELECTED ( dim_channel ) ) )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: d496e3cd-ea51-4535-829b-14218ff8285b
+
+	/// Net revenue minus direct acquisition spend.
+	measure 'Channel Contribution' = [Net Revenue] - [Direct Spend]
+		formatString: \$#,0
+		displayFolder: 6. Advanced
+		lineageTag: 4eb0d415-9e58-4bd4-977f-3126f53c42dd
+
+	/// Share of total contribution by channel.
+	measure 'Contribution Share %' = DIVIDE ( [Channel Contribution], CALCULATE ( [Channel Contribution], ALLSELECTED ( dim_channel ) ) )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: cdc9d37a-b640-41d9-bc37-3e757e9b9d8c
+
+	/// Users with at least one refund.
+	measure 'Refund Users' = CALCULATE ( DISTINCTCOUNT ( fact_transactions[user_id] ), fact_transactions[transaction_type] = "refund" )
+		formatString: #,0
+		displayFolder: 6. Advanced
+		lineageTag: 2f4a12a9-5b5e-41c6-84f3-5bd649c0837f
+
+	/// Refunded amount as a share of gross revenue.
+	measure 'Refund Rate %' = DIVIDE ( [Refunds], [Gross Revenue] )
+		formatString: 0.00%
+		displayFolder: 6. Advanced
+		lineageTag: 902843e4-3f95-4d2e-b21f-d17f1ea4429d
+
+	/// Number of transactions.
+	measure Transactions = COUNTROWS ( fact_transactions )
+		formatString: #,0
+		displayFolder: 6. Advanced
+		lineageTag: 273b61db-c585-4193-b9e2-3593ce2628ca
+
+	/// Number of renewal transactions.
+	measure 'Renewal Count' = CALCULATE ( [Transactions], fact_transactions[transaction_type] = "renewal" )
+		formatString: #,0
+		displayFolder: 6. Advanced
+		lineageTag: 99b77d24-6a36-4380-9a83-925e24c43b04
+
+	/// Number of upgrade transactions.
+	measure 'Upgrade Count' = CALCULATE ( [Transactions], fact_transactions[transaction_type] = "upgrade" )
+		formatString: #,0
+		displayFolder: 6. Advanced
+		lineageTag: 8e5aae63-4aa7-4911-8f6f-57a5ffd84ded
+
+	/// Share of all renewals that came with a given campaign.
+	measure 'Share of Renewals %' = DIVIDE ( [Renewal Count], CALCULATE ( [Renewal Count], ALLSELECTED ( fact_transactions[campaign] ) ) )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: 7e11d44c-7b5b-4586-b12f-450afa5c8ab7
+
+	/// Share of all upgrades that came with a given campaign.
+	measure 'Share of Upgrades %' = DIVIDE ( [Upgrade Count], CALCULATE ( [Upgrade Count], ALLSELECTED ( fact_transactions[campaign] ) ) )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: 370b696b-0179-4c69-b008-4e56993728b7
+
+	/// Share of net revenue by campaign.
+	measure 'Campaign Revenue Share %' = DIVIDE ( [Net Revenue], CALCULATE ( [Net Revenue], ALLSELECTED ( fact_transactions[campaign] ) ) )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: fd84cebe-f498-4bea-aba5-835ca40e1a94
+
+	/// Churned users who paid again through a Win-back campaign (a second first payment).
+	measure 'Win-back Returned Users' = CALCULATE ( DISTINCTCOUNT ( fact_transactions[user_id] ), fact_transactions[campaign] = "Win-back", fact_transactions[transaction_type] = "first_payment" )
+		formatString: #,0
+		displayFolder: 6. Advanced
+		lineageTag: b1573849-fc29-43c2-88bd-b17817e29951
+
+	/// Win-back returners who renewed at least once after coming back.
+	measure 'Win-back Users Renewed After' =
+			VAR ReturnedUsers =
+			    CALCULATETABLE (
+			        ADDCOLUMNS (
+			            VALUES ( fact_transactions[user_id] ),
+			            "@ReturnDate", CALCULATE ( MIN ( fact_transactions[txn_datetime] ) )
+			        ),
+			        fact_transactions[campaign] = "Win-back",
+			        fact_transactions[transaction_type] = "first_payment"
+			    )
+			RETURN
+			    COUNTROWS (
+			        FILTER (
+			            ReturnedUsers,
+			            VAR ReturnDate = [@ReturnDate]
+			            RETURN
+			                CALCULATE (
+			                    COUNTROWS ( fact_transactions ),
+			                    REMOVEFILTERS ( fact_transactions[campaign] ),
+			                    fact_transactions[transaction_type] = "renewal",
+			                    fact_transactions[txn_datetime] > ReturnDate
+			                ) > 0
+			        )
+			    )
+		formatString: #,0
+		displayFolder: 6. Advanced
+		lineageTag: 7a5f1062-2c9b-4383-9fbc-64256ec91cab
+
+	/// Share of Win-back returners who renewed afterwards.
+	measure 'Win-back Renewal Rate %' = DIVIDE ( [Win-back Users Renewed After], [Win-back Returned Users] )
+		formatString: 0.0%
+		displayFolder: 6. Advanced
+		lineageTag: 480b997e-cd2e-4120-913d-ac7da77aa25e
+
+	column Dummy
+		dataType: string
+		isHidden
+		lineageTag: bd8985cb-f637-4597-9f22-259427bc94c0
+		summarizeBy: none
+		sourceColumn: Dummy
+
+	partition _Measures = m
+		mode: import
+		source =
+				let
+					Source = #table(type table [Dummy = text], {})
+				in
+					Source
+

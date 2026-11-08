@@ -1,0 +1,20 @@
+# Data extracts from the course database are not published
+data/
+
+# Power BI local cache and machine-specific settings (the cache holds the data)
+**/.pbi/cache.abf
+**/.pbi/localSettings.json
+
+# .pbix files embed the data model together with the data
+*.pbix
+
+# Raw screenshots (the curated images used in the README are in images/)
+images/raw/
+
+# Working notes in Ukrainian, not part of the public portfolio
+sql/validation/*_ua.sql
+report/*_UA.pdf
+
+# OS files
+Thumbs.db
+desktop.ini
