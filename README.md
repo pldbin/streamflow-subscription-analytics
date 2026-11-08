@@ -25,7 +25,7 @@ LTV here is the revenue a user has actually paid so far (historical LTV), not a 
 
 ## Dashboard
 
-Six report pages in Power BI. Every number is a DAX measure. All six pages are also in [one PDF](report/StreamFlow_Dashboard.pdf). The written report is available as [PDF](report/StreamFlow_Report.pdf) and [Word](report/StreamFlow_Report.docx), together with a short [presentation script](report/StreamFlow_Presentation_EN.pdf).
+Six report pages in Power BI. Every number is a DAX measure. All six pages are also in [one PDF](report/StreamFlow_Dashboard.pdf). The written report is available as [PDF](report/StreamFlow_Report.pdf) and [Word](report/StreamFlow_Report.docx).
 
 | Page | What it answers |
 |---|---|
@@ -119,7 +119,7 @@ sql/profile/      data profile and quality checks
 sql/extract/      the four extracts loaded into Power BI
 sql/validation/   SQL cross-checks of the DAX results
 powerbi/          Power BI project (.pbip: model, measures and report as text)
-report/           written report (PDF, Word), presentation script and dashboard export (PDF)
+report/           written report (PDF, Word) and dashboard export (PDF)
 images/           dashboard pages, data model, ER diagram
 ```
 

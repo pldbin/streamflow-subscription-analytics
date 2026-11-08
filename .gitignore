@@ -11,9 +11,9 @@ data/
 # Raw screenshots (the curated images used in the README are in images/)
 images/raw/
 
-# Working notes in Ukrainian, not part of the public portfolio
+# Working notes and presentation scripts, not part of the public portfolio
 sql/validation/*_ua.sql
-report/*_UA.pdf
+report/*_Presentation_*.pdf
 
 # OS files
 Thumbs.db
